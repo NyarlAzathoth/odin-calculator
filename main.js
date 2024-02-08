@@ -1,5 +1,5 @@
 const CHARACTERS_NOT_ALLOWED_REGEX = '[^0123456789+\\-*/().]'; // regex to match any not allowed characters
-const END_OF_LINE_REGEX = '[+\\-*/.]$'; // regex to match invalid character in last
+const END_OF_LINE_REGEX = '[+\\-*/(.]$'; // regex to match invalid character in last
 const MULTIPLE_OPERATOR_REGEX = '[+\\-*/.][*/.]|[.][+\\-]|[+\\-]{3}'; // regex to match any combination of these +-*/. occurring 2 or more time consecutively except for (++ -- +- -+)
 const DECIMAL_DOT_REGEX = '[.][0-9]*[.]'; // regex to match any wrong decimal dot
 const VALIDITY_REGEX = new RegExp(END_OF_LINE_REGEX+'|'+CHARACTERS_NOT_ALLOWED_REGEX+'|'+DECIMAL_DOT_REGEX+'|'+MULTIPLE_OPERATOR_REGEX);
@@ -43,21 +43,35 @@ function simplifyNumber (operator, number) {
     }
 }
 
-function parenthesisCheck (expression) {
+function areParenthesisValid (expression) {
     let parenthesisStack = [];
 
     for (let i = 0; i<expression.length; i++) {
-        
+        let currentCharacter = expression.charAt(i);
+        let currentTop = parenthesisStack[-1];
+
+        if (currentCharacter == '(') {
+            parenthesisStack.push(currentCharacter)
+        } else if (currentCharacter == ')') {
+            if (parenthesisStack.length == 0) {
+                return false
+            } else {
+                parenthesisStack.pop();
+            }
+        }
     }
+
+    if (parenthesisStack.length == 0) {return true};
 }
 
-function isValid (expression) {
-    return VALIDITY_REGEX.test(expression) || parenthesisCheck(expression);
+function isNotValid (expression) {
+    return VALIDITY_REGEX.test(expression) || !areParenthesisValid(expression);
 }
 
 function evaluate (expression) {
-    if (!isValid(expression)) {
-        
+    if (isNotValid(expression)) {
+        console.log('not valid');
+        return false;
     }
 
     let expressionArray = expression.split(SPLIT_REGEX); //create array of the numbers and characters
@@ -101,6 +115,6 @@ function evaluate (expression) {
     return result.toFixed(5)
 }
 
-let expression = '12+-45-+9.1*-78/+154';
+let expression = '12+-45-*9.1*-7.8.9/+154';
 
 console.log(evaluate(expression));
