@@ -1,5 +1,11 @@
-const ALLOWED_CHARACTERS = '0123456789+-*/()'
-// regex: /(?=[\+\-\*\/\(\)])|(?<=[\+\-\*\/\(\)])/g
+const CHARACTERS_NOT_ALLOWED_REGEX = '[^0123456789+\\-*/().]'; // regex to match any not allowed characters
+const END_OF_LINE_REGEX = '[+\\-*/.]$'; // regex to match invalid character in last
+const MULTIPLE_OPERATOR_REGEX = '[+\\-*/.][*/.]|[.][+\\-]|[+\\-]{3}'; // regex to match any combination of these +-*/. occurring 2 or more time consecutively except for (++ -- +- -+)
+const DECIMAL_DOT_REGEX = '[.][0-9]*[.]'; // regex to match any wrong decimal dot
+const VALIDITY_REGEX = new RegExp(END_OF_LINE_REGEX+'|'+CHARACTERS_NOT_ALLOWED_REGEX+'|'+DECIMAL_DOT_REGEX+'|'+MULTIPLE_OPERATOR_REGEX);
+
+const SPLIT_REGEX = /(?=[+\-*/()])|(?<=[+\-*/()])/g; // regex to split the string into a list
+
 
 function add (a, b) {
     return a + b;
@@ -37,12 +43,24 @@ function simplifyNumber (operator, number) {
     }
 }
 
-function evaluate (expression) {
-    let expressionArray = expression.split(/(?=[\+\-\*\/\(\)])|(?<=[\+\-\*\/\(\)])/g); //create array of the numbers and characters
+function parenthesisCheck (expression) {
+    let parenthesisStack = [];
 
-    // if (isNotValid(expressionArray)) {   //check if expression is valid
-    //     return 'ERROR';
-    // }
+    for (let i = 0; i<expression.length; i++) {
+        
+    }
+}
+
+function isValid (expression) {
+    return VALIDITY_REGEX.test(expression) || parenthesisCheck(expression);
+}
+
+function evaluate (expression) {
+    if (!isValid(expression)) {
+        
+    }
+
+    let expressionArray = expression.split(SPLIT_REGEX); //create array of the numbers and characters
 
     let processedExpressionArray = [];
 
