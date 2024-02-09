@@ -219,26 +219,44 @@ function evaluateExpression (expression) {
 // Button functions
 
 function addCharacter (character) {
-    displayBox.value += character;
+    inputBox.innerText += character;
 }
 
 function removeCharacter () {
-    displayBox.value = displayBox.value.slice(0, -1);
+    inputBox.innerText = inputBox.innerText.slice(0, -1);
 }
 
 function evaluateInput () {
-    expression = displayBox.value;
+    expression = inputBox.innerText;
 
-    if (isNotValid(expression)) {
-        displayBox.value += ' = Invalid expression, wrong syntax';
-    } else {
-        displayBox.value += ` = ${evaluateExpression(expression)}`;
+    if (expression !== '') {
+        if (isNotValid(expression)) {
+            expression += ' = Invalid characters or wrong syntax';
+        } else {
+            expression += ` = ${evaluateExpression(expression)}`;
+        }
+
+        let newResult = document.createElement('p');
+        newResult.innerText = expression;
+
+        resultsBox.prepend(newResult);
+
+        inputBox.innerHTML = '';
     }
 }
 
 // Links display
 
-let displayBox = document.querySelector('#display');
+let inputBox = document.querySelector('#input');
+
+inputBox.addEventListener("keydown", function (e) {
+    if (e.code === "Enter") {  //checks whether the pressed key is "Enter"
+        e.preventDefault();
+        evaluateInput();
+    }
+});
+
+let resultsBox = document.querySelector('#results');
 
 // Setup buttons
 
@@ -282,4 +300,3 @@ removeButton.addEventListener('click', () => {removeCharacter()});
 let equalButton = document.querySelector('#equal');
 
 equalButton.addEventListener('click', () => {evaluateInput()});
-
