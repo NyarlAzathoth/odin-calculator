@@ -203,10 +203,6 @@ function evaluateArray (array) {
 }
 
 function evaluateExpression (expression) {
-    if (isNotValid(expression)) {
-        return false;
-    }
-
     let simplifiedExpression = simplifyExpression(expression); // duo of +/- and redundant + are simplified
 
     let expressionArray = simplifiedExpression.split(SPLIT_REGEX); // creates array of the numbers and characters
@@ -220,10 +216,24 @@ function evaluateExpression (expression) {
     return parseFloat(result.toFixed(5));
 }
 
-// Functions to modify display
+// Button functions
 
-function addCharacter () {
+function addCharacter (character) {
+    displayBox.value += character;
+}
 
+function removeCharacter () {
+    displayBox.value = displayBox.value.slice(0, -1);
+}
+
+function evaluateInput () {
+    expression = displayBox.value;
+
+    if (isNotValid(expression)) {
+        displayBox.value += ' = Invalid expression, wrong syntax';
+    } else {
+        displayBox.value += ` = ${evaluateExpression(expression)}`;
+    }
 }
 
 // Links display
@@ -232,21 +242,44 @@ let displayBox = document.querySelector('#display');
 
 // Setup buttons
 
+// number buttons
 let numberButtons = document.querySelectorAll('.number');
 
 numberButtons.forEach( (button) => {
-    button.addEventListener('click', addCharacter(button.id))
+    button.addEventListener('click', () => {addCharacter(button.id)})
 });
 
+// operator buttons
 let operatorButtons = document.querySelectorAll('.operator');
 
 operatorButtons.forEach( (button) => {
-    button.addEventListener('click', addCharacter(button.id))
+    button.addEventListener('click', () => {addCharacter(button.id)})
 });
 
+// dot button
 let dotButton = document.querySelector('.dot');
 
-dotButton.addEventListener('click', addCharacter(dotButton.id))
+dotButton.addEventListener('click', () => {addCharacter(dotButton.id)});
 
+// bracket buttons
+let bracketButtons = document.querySelectorAll('.bracket');
+
+bracketButtons.forEach( (button) => {
+    button.addEventListener('click', () => {addCharacter(button.id)})
+});
+
+// // character buttons
+
+// let characterButtons = document.querySelectorAll('')
+
+// remove button
+
+let removeButton = document.querySelector('#remove');
+
+removeButton.addEventListener('click', () => {removeCharacter()});
+
+// equal buttons
 let equalButton = document.querySelector('#equal');
+
+equalButton.addEventListener('click', () => {evaluateInput()});
 
