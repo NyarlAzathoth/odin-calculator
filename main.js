@@ -1,22 +1,26 @@
-const CHARACTERS_NOT_ALLOWED_REGEX = '[^0123456789+\\-*/^().]'; // regex to match any not allowed characters
+const CHARACTERS_NOT_ALLOWED_REGEX = '[^0123456789+\\-*/^().]'; // regex to match any disallowed characters
 const END_OF_LINE_REGEX = '[+\\-*/^(.]$'; // regex to match invalid character in last
-const MULTIPLE_OPERATOR_REGEX = '[+\\-*/^.(][*/^.)]|[.][+\\-()]|[+\\-]{3}'; // regex to match any combination of these +-*/. occurring 2 or more time consecutively except for (++ -- +- -+)
+const MULTIPLE_OPERATOR_REGEX = '[+\\-*/^.(][*/^.)]|[.][+\\-()]|[+\\-]{3}'; // regex to match any combination of these +-*/. occurring 2 or more time consecutively except for the duos +/-
 const DECIMAL_DOT_REGEX = '[.][0-9]*[.]'; // regex to match any wrong decimal dot
 const VALIDITY_REGEX = new RegExp(END_OF_LINE_REGEX+'|'+CHARACTERS_NOT_ALLOWED_REGEX+'|'+DECIMAL_DOT_REGEX+'|'+MULTIPLE_OPERATOR_REGEX);
-const POSITIVE_SIMPLIFICATION_REGEX = /\+\+|\-\-/g;
-const NEGATIVE_SIMPLIFICATION_REGEX = /\+\-|\-\+/g;
-const PLUS_SIMPLIFICATION_REGEX = /[*/(]\+[0-9]/g;
 
-const SPLIT_REGEX = /(?=[+\-*/^()])|(?<=[+\-*/^()])/g; // regex to split the string into a list
+const POSITIVE_SIMPLIFICATION_REGEX = /\+\+|\-\-/g; // regex to match ++ or --
+const NEGATIVE_SIMPLIFICATION_REGEX = /\+\-|\-\+/g; // regex to match +- or -+
+const PLUS_SIMPLIFICATION_REGEX = /[*/(]\+[0-9]/g; // regex to match redundant +
 
-const NUMBERS = '0123456789';
+const SPLIT_REGEX = /(?=[+\-*/^()])|(?<=[+\-*/^()])/g; // regex to split the string into a list of numbers and operators/parenthesis and keep the separators
+
+// Not used
+// const NUMBERS = '0123456789';
+// const PARENTHESIS = '()';
+
 const OPERATORS = '+-*/^';
-const PARENTHESIS = '()';
-const NOT_NUMBERS = '+-*/^.()';
-const THIRD_OPERATORS = '+-';
-const SECOND_OPERATORS = '*/';
-const FIRST_OPERATORS = '^';
+const OPERATORS_PARENTHESIS = '+-*/^.()';
+const ADDITIVE_OPERATORS = '+-';
+const MULTIPLICATION_OPERATORS = '*/';
+const EXPONENT_OPERATORS = '^';
 
+// Operations functions
 
 function add (a, b) {
     return a + b;
@@ -52,6 +56,8 @@ function operate (a, b, operator) {
     }
 }
 
+// Functions to simplify expression
+
 function simplifyNumber (operator, number) {
     if (operator == '+') {
         return number
@@ -60,36 +66,12 @@ function simplifyNumber (operator, number) {
     }
 }
 
-// function simplifyOperators (operator1, operator2) {
-//     if (operator1 === operator2) {
-//         return '+';
-//     } else {
-//         return '-';
-//     }
-// }
-
-function simplifyReplacer (match) {
+function simplifyReplacer (match) { // function in the replace() method to remove redundant +
     return match.charAt(0)+match.charAt(2);
 }
 
-function simplifyExpression (expression) {
+function simplifyExpression (expression) { // duo of +/- and redundant + are simplified
     return expression.replace(POSITIVE_SIMPLIFICATION_REGEX, '+').replace(NEGATIVE_SIMPLIFICATION_REGEX, '-').replace(PLUS_SIMPLIFICATION_REGEX, simplifyReplacer);
-}
-
-function convertToNumbers (array) {
-    let processedArray = [];
-
-    for (let i = 0; i<array.length; i++) {
-        let currentCharacter = array[i];
-
-        if (!NOT_NUMBERS.includes(currentCharacter)) {
-            processedArray.push(parseFloat(currentCharacter));
-        } else {
-            processedArray.push(currentCharacter)
-        }
-    }
-
-    return processedArray;
 }
 
 function collapseSigns (array) {
@@ -98,10 +80,9 @@ function collapseSigns (array) {
     for (let i = 0; i<array.length; i++) {
         let currentCharacter = array[i];
 
-        if (!NOT_NUMBERS.includes(currentCharacter)) {
-            if (i == 1 && THIRD_OPERATORS.includes(array[i-1]) || i>1 && THIRD_OPERATORS.includes(array[i-1]) && OPERATORS.includes(array[i-2])) {
+        if (typeof currentCharacter == 'number') {
+            if (i == 1 && ADDITIVE_OPERATORS.includes(array[i-1]) || i>1 && ADDITIVE_OPERATORS.includes(array[i-1]) && OPERATORS.includes(array[i-2])) {
                 let lastCharacter = array[i-1];
-
                 processedArray.pop();
                 processedArray.push(simplifyNumber(lastCharacter, parseFloat(currentCharacter)));
             } else {
@@ -114,6 +95,20 @@ function collapseSigns (array) {
 
     return processedArray;
 }
+
+function convertToNumbers (array) {
+    for (let i = 0; i<array.length; i++) {
+        let currentCharacter = array[i];
+
+        if (!OPERATORS_PARENTHESIS.includes(currentCharacter)) {
+            array[i] = parseFloat(currentCharacter);
+        }
+    }
+
+    return array;
+}
+
+// Functions to check syntax
 
 function areParenthesisValid (expression) { // stack based algorithm, only for ()
     let parenthesisStack = [];
@@ -136,7 +131,13 @@ function areParenthesisValid (expression) { // stack based algorithm, only for (
     if (parenthesisStack.length == 0) {return true};
 }
 
-function evaluateOperators (array, operators) { // evaluates a set of operators progressively from left to right and produces a new array with the operation results replacing the operations
+function isNotValid (expression) { // test for validity of syntax
+    return VALIDITY_REGEX.test(expression) || !areParenthesisValid(expression);
+}
+
+// Functions to evaluate
+
+function evaluateOperators (array, operators) { // evaluates a set of operators progressively from left to right and produces a new array with the operation results
     let processedArray = [];
 
     for (let i = 0; i<array.length; i++) {
@@ -156,15 +157,10 @@ function evaluateOperators (array, operators) { // evaluates a set of operators 
     return processedArray;
 }
 
-function isNotValid (expression) { // test for validity of syntax
-    return VALIDITY_REGEX.test(expression) || !areParenthesisValid(expression);
-}
-
 function evaluateArray (array) {
+    let noParenthesis = []; // array with the expressions in parenthesis evaluated
 
-    let noParenthesis = [];
-
-    for (let i = 0; i<array.length; i++) {  // calls evaluateArray again for expressions in parenthesis and inserts the result in place of the expression in parenthesis
+    for (let i = 0; i<array.length; i++) {
         let currentCharacter = array[i];
 
         if (currentCharacter == '(') {
@@ -174,7 +170,7 @@ function evaluateArray (array) {
             let closingArrayIndex = i;
             let closed = false;
 
-            while (!closed) {
+            while (!closed) { // leaves when the corresponding closing parenthesis is reached
                 closingArrayIndex++;
 
                 if (array[closingArrayIndex] == '(') {
@@ -188,49 +184,20 @@ function evaluateArray (array) {
                 }
             }
 
-            noParenthesis.push(evaluateArray(array.slice(openingArrayIndex+1,closingArrayIndex)))
-            i = closingArrayIndex;
+            noParenthesis.push(evaluateArray(array.slice(openingArrayIndex+1,closingArrayIndex))) // calls evaluateArray again for the content of the parenthesis
+            i = closingArrayIndex; // jumps to after the parenthesis
         } else {
             noParenthesis.push(currentCharacter);
         }
     }
 
-    console.log(noParenthesis);
+    let collapsedSigns = collapseSigns(noParenthesis); // - are collapsed into the numbers
 
-    let collapsedSigns = collapseSigns(noParenthesis);
+    let firstOpArray = evaluateOperators(collapsedSigns, EXPONENT_OPERATORS); // array with the first priority operations completed
 
-    console.log(collapsedSigns)
+    let secondOpArray = evaluateOperators(firstOpArray, MULTIPLICATION_OPERATORS); // array with the second priority operations completed
 
-    let firstOpArray = evaluateOperators(collapsedSigns, FIRST_OPERATORS); // array with the first priority operations completed
-
-    console.log(firstOpArray);
-
-    let secondOpArray = evaluateOperators(firstOpArray, SECOND_OPERATORS); // array with the second priority operations completed
-
-    console.log(secondOpArray);
-
-    let result = evaluateOperators(secondOpArray, THIRD_OPERATORS)[0]; // result after completing last operations
-
-    // let result = 0;
-
-    // result = processedArray.reduce( (total, currentValue, i, array) => {  //evaluates the expression
-    //     if (isNaN(parseFloat(currentValue))) {
-    //         return operate(total, array[i+1], currentValue);
-    //     } else {
-    //         return total
-    //     }
-    // });
-
-    // for (let i = 0; i<processedExpressionArray.length; i++){     //evaluates the expression
-    //     let currentValue = processedExpressionArray[i];
-        
-    //     if (isNaN(parseFloat(currentValue))) {
-    //         console.log(result)
-    //         result = operate(result, processedExpressionArray[i+1], currentValue);
-    //     }
-    // }
-
-    console.log(result);
+    let result = evaluateOperators(secondOpArray, ADDITIVE_OPERATORS)[0]; // result after completing last operations
 
     return result;
 }
@@ -240,39 +207,46 @@ function evaluateExpression (expression) {
         return false;
     }
 
-    console.log(expression);
+    let simplifiedExpression = simplifyExpression(expression); // duo of +/- and redundant + are simplified
 
-    let simplifiedExpression = simplifyExpression(expression);
-
-    console.log(simplifiedExpression);
-
-    let expressionArray = simplifiedExpression.split(SPLIT_REGEX); //create array of the numbers and characters
-
-    console.log(expressionArray);
+    let expressionArray = simplifiedExpression.split(SPLIT_REGEX); // creates array of the numbers and characters
 
     let processedArray = [];
 
-    processedArray = convertToNumbers(expressionArray);
-
-    console.log(processedArray);
+    processedArray = convertToNumbers(expressionArray); // numbers in string are converted to numbers
 
     let result = evaluateArray(processedArray);
 
     return parseFloat(result.toFixed(5));
 }
 
-let expression = '12*((-45*65)*-45*9.1*(-7.8/+154))';
+// Functions to modify display
 
-console.log(evaluateExpression(expression));
-
-function addNumber () {
+function addCharacter () {
 
 }
 
+// Links display
+
+let displayBox = document.querySelector('#display');
+
 // Setup buttons
 
-let numberButtons = document.querySelectorAll('.number')
+let numberButtons = document.querySelectorAll('.number');
 
 numberButtons.forEach( (button) => {
-    button.addEventListener('click', addNumber())
+    button.addEventListener('click', addCharacter(button.id))
 });
+
+let operatorButtons = document.querySelectorAll('.operator');
+
+operatorButtons.forEach( (button) => {
+    button.addEventListener('click', addCharacter(button.id))
+});
+
+let dotButton = document.querySelector('.dot');
+
+dotButton.addEventListener('click', addCharacter(dotButton.id))
+
+let equalButton = document.querySelector('#equal');
+
