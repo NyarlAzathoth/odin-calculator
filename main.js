@@ -3,11 +3,16 @@ const END_OF_LINE_REGEX = '[+\\-*/^(.]$'; // regex to match invalid character in
 const MULTIPLE_OPERATOR_REGEX = '[+\\-*/^.(][*/^.)]|[.][+\\-()]|[+\\-]{3}'; // regex to match any combination of these +-*/. occurring 2 or more time consecutively except for (++ -- +- -+)
 const DECIMAL_DOT_REGEX = '[.][0-9]*[.]'; // regex to match any wrong decimal dot
 const VALIDITY_REGEX = new RegExp(END_OF_LINE_REGEX+'|'+CHARACTERS_NOT_ALLOWED_REGEX+'|'+DECIMAL_DOT_REGEX+'|'+MULTIPLE_OPERATOR_REGEX);
+const POSITIVE_SIMPLIFICATION_REGEX = /\+\+|\-\-/g;
+const NEGATIVE_SIMPLIFICATION_REGEX = /\+\-|\-\+/g;
+const PLUS_SIMPLIFICATION_REGEX = /[*/(]\+[0-9]/g;
 
 const SPLIT_REGEX = /(?=[+\-*/^()])|(?<=[+\-*/^()])/g; // regex to split the string into a list
 
-const NOT_NUMBERS = '+-*/.()';
+const NUMBERS = '0123456789';
+const OPERATORS = '+-*/^';
 const PARENTHESIS = '()';
+const NOT_NUMBERS = '+-*/^.()';
 const THIRD_OPERATORS = '+-';
 const SECOND_OPERATORS = '*/';
 const FIRST_OPERATORS = '^';
@@ -55,15 +60,62 @@ function simplifyNumber (operator, number) {
     }
 }
 
-function simplifyOperators (operator1, operator2) {
-    if (operator1 === operator2) {
-        return '+';
-    } else {
-        return '-';
-    }
+// function simplifyOperators (operator1, operator2) {
+//     if (operator1 === operator2) {
+//         return '+';
+//     } else {
+//         return '-';
+//     }
+// }
+
+function simplifyReplacer (match) {
+    return match.charAt(0)+match.charAt(2);
 }
 
-function areParenthesisValid (expression) {
+function simplifyExpression (expression) {
+    return expression.replace(POSITIVE_SIMPLIFICATION_REGEX, '+').replace(NEGATIVE_SIMPLIFICATION_REGEX, '-').replace(PLUS_SIMPLIFICATION_REGEX, simplifyReplacer);
+}
+
+function convertToNumbers (array) {
+    let processedArray = [];
+
+    for (let i = 0; i<array.length; i++) {
+        let currentCharacter = array[i];
+
+        if (!NOT_NUMBERS.includes(currentCharacter)) {
+            processedArray.push(parseFloat(currentCharacter));
+        } else {
+            processedArray.push(currentCharacter)
+        }
+    }
+
+    return processedArray;
+}
+
+function collapseSigns (array) {
+    let processedArray = [];
+
+    for (let i = 0; i<array.length; i++) {
+        let currentCharacter = array[i];
+
+        if (!NOT_NUMBERS.includes(currentCharacter)) {
+            if (i == 1 && THIRD_OPERATORS.includes(array[i-1]) || i>1 && THIRD_OPERATORS.includes(array[i-1]) && OPERATORS.includes(array[i-2])) {
+                let lastCharacter = array[i-1];
+
+                processedArray.pop();
+                processedArray.push(simplifyNumber(lastCharacter, parseFloat(currentCharacter)));
+            } else {
+                processedArray.push(parseFloat(currentCharacter));
+            }
+        } else {
+            processedArray.push(currentCharacter)
+        }
+    }
+
+    return processedArray;
+}
+
+function areParenthesisValid (expression) { // stack based algorithm, only for ()
     let parenthesisStack = [];
 
     for (let i = 0; i<expression.length; i++) {
@@ -73,7 +125,7 @@ function areParenthesisValid (expression) {
         if (currentCharacter == '(') {
             parenthesisStack.push(currentCharacter)
         } else if (currentCharacter == ')') {
-            if (parenthesisStack.length == 0) {
+            if (parenthesisStack.length === 0) {
                 return false
             } else {
                 parenthesisStack.pop();
@@ -84,13 +136,13 @@ function areParenthesisValid (expression) {
     if (parenthesisStack.length == 0) {return true};
 }
 
-function evaluateOperators (array, operators) {
+function evaluateOperators (array, operators) { // evaluates a set of operators progressively from left to right and produces a new array with the operation results replacing the operations
     let processedArray = [];
 
     for (let i = 0; i<array.length; i++) {
         let currentCharacter = array[i];
         
-        if (i == 0) {
+        if (i === 0) {
             processedArray.push(currentCharacter);
         } else if (operators.includes(currentCharacter)) {
             let newNumber = operate(processedArray.slice(-1)[0], array[i+1], currentCharacter);
@@ -104,37 +156,52 @@ function evaluateOperators (array, operators) {
     return processedArray;
 }
 
-function isNotValid (expression) {
+function isNotValid (expression) { // test for validity of syntax
     return VALIDITY_REGEX.test(expression) || !areParenthesisValid(expression);
 }
 
 function evaluateArray (array) {
 
-    let parenthesisEvaluated = [];
+    let noParenthesis = [];
 
-    for (let i = 0; i<array.length; i++) {
+    for (let i = 0; i<array.length; i++) {  // calls evaluateArray again for expressions in parenthesis and inserts the result in place of the expression in parenthesis
         let currentCharacter = array[i];
 
         if (currentCharacter == '(') {
+            let parenthesisStack = [];
+
             let openingArrayIndex = i;
             let closingArrayIndex = i;
             let closed = false;
 
             while (!closed) {
                 closingArrayIndex++;
-                if (array[closingArrayIndex] == ')') {
-                    closed = true;
+
+                if (array[closingArrayIndex] == '(') {
+                    parenthesisStack.push('(');
+                } else if (array[closingArrayIndex] == ')') {
+                    if (parenthesisStack.length !== 0) {
+                        parenthesisStack.pop();
+                    } else {
+                        closed = true;
+                    }
                 }
             }
 
-            parenthesisEvaluated.push(evaluateArray(array.slice(openingArrayIndex+1,closingArrayIndex)))
+            noParenthesis.push(evaluateArray(array.slice(openingArrayIndex+1,closingArrayIndex)))
             i = closingArrayIndex;
         } else {
-            parenthesisEvaluated.push(currentCharacter);
+            noParenthesis.push(currentCharacter);
         }
     }
 
-    let firstOpArray = evaluateOperators(parenthesisEvaluated, FIRST_OPERATORS); // array with the first priority operations completed
+    console.log(noParenthesis);
+
+    let collapsedSigns = collapseSigns(noParenthesis);
+
+    console.log(collapsedSigns)
+
+    let firstOpArray = evaluateOperators(collapsedSigns, FIRST_OPERATORS); // array with the first priority operations completed
 
     console.log(firstOpArray);
 
@@ -144,9 +211,6 @@ function evaluateArray (array) {
 
     let result = evaluateOperators(secondOpArray, THIRD_OPERATORS)[0]; // result after completing last operations
 
-    console.log(result);
-
-    
     // let result = 0;
 
     // result = processedArray.reduce( (total, currentValue, i, array) => {  //evaluates the expression
@@ -166,68 +230,49 @@ function evaluateArray (array) {
     //     }
     // }
 
-    return parseFloat(result.toFixed(5))
+    console.log(result);
+
+    return result;
 }
 
 function evaluateExpression (expression) {
     if (isNotValid(expression)) {
-        console.log('not valid');
         return false;
     }
 
-    let expressionArray = expression.split(SPLIT_REGEX); //create array of the numbers and characters
+    console.log(expression);
+
+    let simplifiedExpression = simplifyExpression(expression);
+
+    console.log(simplifiedExpression);
+
+    let expressionArray = simplifiedExpression.split(SPLIT_REGEX); //create array of the numbers and characters
 
     console.log(expressionArray);
 
     let processedArray = [];
 
-    for (let i = 0; i<expressionArray.length; i++){     //collapse operators into the numbers (['4', '+', '-', '5'] => [4, '+', -5])
-        let currentValue = expressionArray[i];
-        
-        if (NOT_NUMBERS.includes(currentValue)) {
-            let nextValue = expressionArray[i+1];
-
-            if (!PARENTHESIS.includes(nextValue) && i==0 || !PARENTHESIS.includes(currentValue) && i>0 && NOT_NUMBERS.includes(expressionArray[i-1]) && !')'.includes(expressionArray[i-1])) {
-                processedArray.push(simplifyNumber(currentValue, parseFloat(expressionArray[i+1])));
-                i++;
-            } else if (PARENTHESIS.includes(nextValue) && i!=0 && NOT_NUMBERS.includes(expressionArray[i-1]) && !PARENTHESIS.includes(expressionArray[i-1])) {
-                processedArray.pop();
-                processedArray.push(simplifyOperators(expressionArray[i-1], currentValue));
-            } else {
-                processedArray.push(currentValue);
-            }
-        } else {
-            processedArray.push(parseFloat(currentValue));
-        }
-    }
-
-    // for (let i = 0; i<expressionArray.length; i++){     //collapse operators into the numbers (['4', '+', '-', '5'] => [4, '+', -5])
-    //     let currentValue = expressionArray[i];
-        
-    //     if (NOT_NUMBERS.includes(currentValue)) {
-    //         if (!PARENTHESIS.includes(currentValue) && i==0 || i>0 && NOT_NUMBERS.includes(expressionArray[i-1])) {
-    //             processedExpressionArray.push(simplifyNumber(currentValue, parseFloat(expressionArray[i+1])));
-    //             i++;
-    //         } else if (PARENTHESIS.includes(currentValue)) {
-
-    //         } else {
-    //             processedExpressionArray.push(currentValue);
-    //         }
-    //     } else {
-    //         processedExpressionArray.push(parseFloat(currentValue));
-    //     }
-    // }
+    processedArray = convertToNumbers(expressionArray);
 
     console.log(processedArray);
 
     let result = evaluateArray(processedArray);
 
-    console.log(result);
+    return parseFloat(result.toFixed(5));
 }
 
-let expression = '12+(45*65)*(+45*9.1*-7.8)/+154';
+let expression = '12*((-45*65)*-45*9.1*(-7.8/+154))';
 
 console.log(evaluateExpression(expression));
 
+function addNumber () {
+
+}
+
 // Setup buttons
 
+let numberButtons = document.querySelectorAll('.number')
+
+numberButtons.forEach( (button) => {
+    button.addEventListener('click', addNumber())
+});
