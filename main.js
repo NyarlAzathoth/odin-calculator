@@ -1,6 +1,6 @@
 const CHARACTERS_NOT_ALLOWED_REGEX = '[^0123456789+\\-*/^().]'; // regex to match any disallowed characters
 const END_OF_LINE_REGEX = '[+\\-*/^(.]$'; // regex to match invalid character in last
-const MULTIPLE_OPERATOR_REGEX = '[+\\-*/^.(][*/^.)]|[.][+\\-()]|[+\\-]{3}'; // regex to match any combination of these +-*/. occurring 2 or more time consecutively except for the duos +/-
+const MULTIPLE_OPERATOR_REGEX = '[+\\-*/^.(][*/^.)]|[.][+\\-()]|[+\\-]{3}|\\)[0-9]'; // regex to match any combination of these +-*/. occurring 2 or more time consecutively except for the duos +/-
 const DECIMAL_DOT_REGEX = '[.][0-9]*[.]'; // regex to match any wrong decimal dot
 const VALIDITY_REGEX = new RegExp(END_OF_LINE_REGEX+'|'+CHARACTERS_NOT_ALLOWED_REGEX+'|'+DECIMAL_DOT_REGEX+'|'+MULTIPLE_OPERATOR_REGEX);
 
@@ -164,6 +164,11 @@ function evaluateArray (array) {
         let currentCharacter = array[i];
 
         if (currentCharacter == '(') {
+
+            if (i>0 && !OPERATORS_PARENTHESIS.includes(array[i-1])) { // adds an implied multiplication
+                noParenthesis.push('*');
+            }
+
             let parenthesisStack = [];
 
             let openingArrayIndex = i;
@@ -207,9 +212,7 @@ function evaluateExpression (expression) {
 
     let expressionArray = simplifiedExpression.split(SPLIT_REGEX); // creates array of the numbers and characters
 
-    let processedArray = [];
-
-    processedArray = convertToNumbers(expressionArray); // numbers in string are converted to numbers
+    let processedArray = convertToNumbers(expressionArray); // numbers in string are converted to numbers
 
     let result = evaluateArray(processedArray);
 
@@ -224,6 +227,10 @@ function addCharacter (character) {
 
 function removeCharacter () {
     inputBox.innerText = inputBox.innerText.slice(0, -1);
+}
+
+function clearAll () {
+    inputBox.innerText = '';
 }
 
 function evaluateInput () {
@@ -242,6 +249,13 @@ function evaluateInput () {
         resultsBox.prepend(newResult);
 
         inputBox.innerHTML = '';
+    }
+}
+
+function reset() {
+    clearAll();
+    while (resultsBox.firstChild) {
+        resultsBox.removeChild(resultsBox.lastChild);
     }
 }
 
@@ -291,12 +305,21 @@ bracketButtons.forEach( (button) => {
 // let characterButtons = document.querySelectorAll('')
 
 // remove button
-
 let removeButton = document.querySelector('#remove');
 
 removeButton.addEventListener('click', () => {removeCharacter()});
+
+// clear all button
+let clearButton = document.querySelector('#clear');
+
+clearButton.addEventListener('click', () => {clearAll()});
 
 // equal buttons
 let equalButton = document.querySelector('#equal');
 
 equalButton.addEventListener('click', () => {evaluateInput()});
+
+// reset button
+let resetButton = document.querySelector('#reset');
+
+resetButton.addEventListener('click', () => {reset()});
